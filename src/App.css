@@ -170,6 +170,7 @@
 .circle-container {
   position: relative;
   flex-shrink: 0;
+  margin-top: 24px;
 }
 
 /* ===== Tokens ===== */
