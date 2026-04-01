@@ -8,6 +8,17 @@ function Menu({ onSelect }) {
     <div className="menu">
       <h1 className="menu-title">Number Forge</h1>
       <p className="menu-subtitle">Combine numbers to reach the target</p>
+
+      <div className="how-to-play">
+        <h3 className="how-to-title">How to play</h3>
+        <ol className="how-to-steps">
+          <li>Tap a number</li>
+          <li>Pick an operation: <span className="how-op" style={{background:'#a6e3a1'}}>+</span> <span className="how-op" style={{background:'#f38ba8'}}>−</span> <span className="how-op" style={{background:'#89b4fa'}}>×</span> <span className="how-op" style={{background:'#fab387'}}>÷</span></li>
+          <li>Tap another number to combine</li>
+          <li>Repeat until you reach the target!</li>
+        </ol>
+      </div>
+
       <div className="menu-cards">
         <button className="menu-card" onClick={() => onSelect('campaign')}>
           <span className="menu-card-icon">&#9733;</span>

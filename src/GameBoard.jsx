@@ -46,17 +46,6 @@ function FractionDisplay({ value, className = '' }) {
   );
 }
 
-function HistoryStep({ step, index }) {
-  return (
-    <div className="history-step" style={{ animationDelay: `${index * 0.05}s` }}>
-      <FractionDisplay value={step.a} />
-      <span className="history-op">{step.symbol}</span>
-      <FractionDisplay value={step.b} />
-      <span className="history-eq">=</span>
-      <FractionDisplay value={step.result} />
-    </div>
-  );
-}
 
 function getTargetAngles(count) {
   if (count === 1) return [0];
@@ -395,14 +384,6 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
       {solved && (
         <div className="solved-banner">
           <span className="solved-text">Solved!</span>
-        </div>
-      )}
-
-      {history.length > 0 && (
-        <div className="history-section">
-          {history.map((step, i) => (
-            <HistoryStep key={i} step={step} index={i} />
-          ))}
         </div>
       )}
 

@@ -170,7 +170,7 @@
 .circle-container {
   position: relative;
   flex-shrink: 0;
-  margin-top: 24px;
+  margin: 24px 0;
 }
 
 /* ===== Tokens ===== */
@@ -538,6 +538,47 @@
   font-size: 13px;
   color: #585b70;
   line-height: 1.4;
+}
+
+/* ===== How to play ===== */
+.how-to-play {
+  padding: 20px 24px;
+  border-radius: 14px;
+  background: #181825;
+  border: 1px solid #313148;
+  max-width: 340px;
+  width: 100%;
+}
+
+.how-to-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #bac2de;
+  margin: 0 0 12px;
+}
+
+.how-to-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: #585b70;
+  line-height: 1.5;
+}
+
+.how-op {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #11111b;
+  vertical-align: middle;
 }
 
 /* ===== Back button ===== */
