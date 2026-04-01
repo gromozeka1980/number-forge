@@ -14,12 +14,12 @@ const DIR_OPS = [
   { dir: 'left',   op: operations[3], color: '#fab387' }, // ÷ orange
 ];
 
-const DIRECTION_THRESHOLD = 25;
 const CIRCLE_RADIUS_DESKTOP = 130;
 const CIRCLE_SIZE_DESKTOP = 340;
 const CIRCLE_RADIUS_MOBILE = 100;
 const CIRCLE_SIZE_MOBILE = 260;
 const ARC_ANIM_DURATION = 400;
+const FLY_ANIM_DURATION = 300;
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(
@@ -73,7 +73,6 @@ function angleToXY(angle, radius, center) {
   };
 }
 
-// Shortest arc between two angles (minimum distance, either direction)
 function shortestArc(from, to) {
   let delta = to - from;
   while (delta > Math.PI) delta -= 2 * Math.PI;
@@ -85,15 +84,6 @@ function easeOut(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-/**
- * GameBoard — reusable game board component.
- * Props:
- *   numbers: frac[] — starting numbers
- *   target: frac — target to reach
- *   onSolve: () => void — called when solved
- *   extraHeader?: ReactNode — rendered above the board (e.g. progress bar)
- *   roundKey?: number — change to force reset (new round)
- */
 export default function GameBoard({ numbers, target, onSolve, extraHeader, roundKey = 0 }) {
   const isMobile = useIsMobile();
   const CIRCLE_SIZE = isMobile ? CIRCLE_SIZE_MOBILE : CIRCLE_SIZE_DESKTOP;
@@ -105,16 +95,20 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
   const [solved, setSolved] = useState(false);
   const [shake, setShake] = useState(false);
   const [confetti, setConfetti] = useState([]);
-  const [gesture, setGesture] = useState(null);
   const [newTokenId, setNewTokenId] = useState(null);
   const newTokenIdRef = useRef(null);
 
-  const gestureRef = useRef(null);
+  // Tap state machine: idle | selectingOp | selectingTarget
+  const [tapState, setTapState] = useState('idle');
+  const [selectedTokenId, setSelectedTokenId] = useState(null);
+  const [selectedOp, setSelectedOp] = useState(null); // { op, color, dir }
+  // For fly animation: { fromId, toId }
+  const [flyAnim, setFlyAnim] = useState(null);
+
   const tokensRef = useRef(tokens);
   const historyRef = useRef(history);
   const targetRef = useRef(target);
   const solvedRef = useRef(solved);
-  const rafRef = useRef(null);
 
   const anglesRef = useRef({});
   const [renderAngles, setRenderAngles] = useState({});
@@ -128,6 +122,7 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
   targetRef.current = target;
   solvedRef.current = solved;
 
+  // --- Arc animation ---
   const animateToAngles = useCallback((tokenIds, targetAnglesMap) => {
     const fromAngles = {};
     tokenIds.forEach(id => {
@@ -161,12 +156,12 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
     animFrameRef.current = requestAnimationFrame(tick);
   }, []);
 
+  // Reposition tokens on circle when tokens change
   useEffect(() => {
     if (tokens.length === 0) return;
     const TWO_PI = 2 * Math.PI;
     const normalize = (a) => ((a % TWO_PI) + TWO_PI) % TWO_PI;
 
-    // Seed new tokens at their initial angle
     tokens.forEach((t, i) => {
       if (anglesRef.current[t.id] === undefined) {
         const defaults = getTargetAngles(tokens.length);
@@ -174,35 +169,27 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
       }
     });
 
-    // Clean up removed tokens
     const idSet = new Set(tokens.map(t => t.id));
     Object.keys(anglesRef.current).forEach(k => {
       if (!idSet.has(Number(k))) delete anglesRef.current[Number(k)];
     });
 
-    // Sort tokens by their CURRENT angle to preserve spatial ordering
     const sorted = [...tokens].sort((a, b) =>
       normalize(anglesRef.current[a.id] ?? 0) - normalize(anglesRef.current[b.id] ?? 0)
     );
 
     const n = sorted.length;
-    const ta = getTargetAngles(n); // standard equal-spaced slots
+    const ta = getTargetAngles(n);
     const tam = {};
 
     const anchorId = newTokenIdRef.current;
     if (anchorId !== null && sorted.some(t => t.id === anchorId)) {
-      // Rotate the standard layout so the anchor token moves minimally.
-      // Snap to nearest slot-step so canonical shapes are preserved
-      // (e.g. 2 tokens = horizontal, 3 = triangle pointing up, etc.)
       const anchorAngle = anglesRef.current[anchorId];
       const anchorIdx = sorted.findIndex(t => t.id === anchorId);
       const step = TWO_PI / n;
       const rawOffset = anchorAngle - ta[anchorIdx];
       const snappedOffset = Math.round(rawOffset / step) * step;
-
-      sorted.forEach((t, i) => {
-        tam[t.id] = ta[i] + snappedOffset;
-      });
+      sorted.forEach((t, i) => { tam[t.id] = ta[i] + snappedOffset; });
     } else {
       sorted.forEach((t, i) => { tam[t.id] = ta[i]; });
     }
@@ -210,8 +197,7 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
     animateToAngles(tokens.map(t => t.id), tam);
   }, [tokens, animateToAngles]);
 
-  // Initialize / reset when numbers or roundKey change
-  // Serialize numbers to avoid infinite loop from array reference changes
+  // Initialize / reset
   const numbersKey = numbers.map(n => `${n.n}/${n.d}`).join(',');
   useEffect(() => {
     resetTokenIds();
@@ -223,25 +209,25 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
     setTokens(newTokens);
     setHistory([]);
     setUndoStack([]);
-    setGesture(null);
-    gestureRef.current = null;
+    setTapState('idle');
+    setSelectedTokenId(null);
+    setSelectedOp(null);
+    setFlyAnim(null);
     setSolved(false);
     setConfetti([]);
     setNewTokenId(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [numbersKey, roundKey]);
 
-  const spawnConfetti = (big = true) => {
-    const count = big ? 40 : 20;
-    const pieces = Array.from({ length: count }, (_, i) => ({
+  const spawnConfetti = () => {
+    setConfetti(Array.from({ length: 40 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       delay: Math.random() * 0.5,
       color: ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bd6', '#a66cff'][Math.floor(Math.random() * 6)],
       rotation: Math.random() * 360,
       duration: 1 + Math.random() * 1.5,
-    }));
-    setConfetti(pieces);
+    })));
   };
 
   const applyOperation = useCallback((sourceId, targetId, dirOp) => {
@@ -284,73 +270,61 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
     }
   }, [onSolve]);
 
-  // Pointer handlers
-  useEffect(() => {
-    const onMove = (e) => {
-      const g = gestureRef.current;
-      if (!g) return;
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const dx = clientX - g.startX;
-      const dy = clientY - g.startY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      g.cursorX = clientX;
-      g.cursorY = clientY;
-      if (!g.op && dist > DIRECTION_THRESHOLD) {
-        const angle = Math.atan2(dy, dx);
-        let dir;
-        if (angle >= -Math.PI / 4 && angle < Math.PI / 4) dir = 'right';
-        else if (angle >= Math.PI / 4 && angle < 3 * Math.PI / 4) dir = 'bottom';
-        else if (angle >= -3 * Math.PI / 4 && angle < -Math.PI / 4) dir = 'top';
-        else dir = 'left';
-        g.op = DIR_OPS.find(d => d.dir === dir);
-      }
-      if (!rafRef.current) {
-        rafRef.current = requestAnimationFrame(() => {
-          rafRef.current = null;
-          const gg = gestureRef.current;
-          if (gg) setGesture({ tokenId: gg.tokenId, op: gg.op, cursorX: gg.cursorX, cursorY: gg.cursorY });
-        });
-      }
-    };
-    const onUp = (e) => {
-      const g = gestureRef.current;
-      if (!g) return;
-      const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-      const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-      gestureRef.current = null;
-      setGesture(null);
-      if (!g.op) return;
-      const els = document.elementsFromPoint(clientX, clientY);
-      const tokenEl = els.find(el => el.closest?.('.token[data-token-id]'))?.closest('.token[data-token-id]');
-      if (!tokenEl) return;
-      const dropId = parseInt(tokenEl.dataset.tokenId);
-      if (!dropId || dropId === g.tokenId) return;
-      applyOperation(g.tokenId, dropId, g.op);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onUp);
-    };
-  }, [applyOperation]);
+  // --- Tap handlers ---
+  const cancelSelection = () => {
+    setTapState('idle');
+    setSelectedTokenId(null);
+    setSelectedOp(null);
+  };
 
-  const handlePointerDown = (e, token) => {
-    if (solvedRef.current) return;
-    e.preventDefault();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    gestureRef.current = { tokenId: token.id, startX: clientX, startY: clientY, op: null, cursorX: clientX, cursorY: clientY };
-    setGesture({ tokenId: token.id, op: null, cursorX: clientX, cursorY: clientY });
+  const handleTokenTap = (e, token) => {
+    e.stopPropagation();
+    if (solvedRef.current || flyAnim) return;
+
+    if (tapState === 'idle' || tapState === 'selectingOp') {
+      // Select this token, show petals
+      setSelectedTokenId(token.id);
+      setSelectedOp(null);
+      setTapState('selectingOp');
+    } else if (tapState === 'selectingTarget') {
+      if (token.id === selectedTokenId) {
+        // Tapped same token — cancel
+        cancelSelection();
+        return;
+      }
+      // Apply operation: animate source flying to target, then merge
+      setFlyAnim({ fromId: selectedTokenId, toId: token.id });
+      setTapState('idle');
+
+      const op = selectedOp;
+      const srcId = selectedTokenId;
+      const tgtId = token.id;
+
+      setSelectedTokenId(null);
+      setSelectedOp(null);
+
+      setTimeout(() => {
+        setFlyAnim(null);
+        applyOperation(srcId, tgtId, op);
+      }, FLY_ANIM_DURATION);
+    }
+  };
+
+  const handlePetalTap = (e, dirOp) => {
+    e.stopPropagation();
+    setSelectedOp(dirOp);
+    setTapState('selectingTarget');
+  };
+
+  const handleBackgroundTap = () => {
+    if (tapState !== 'idle') {
+      cancelSelection();
+    }
   };
 
   const handleUndo = () => {
     if (undoStack.length === 0) return;
+    cancelSelection();
     const prev = undoStack[undoStack.length - 1];
     setTokens(prev.tokens);
     setHistory(prev.history);
@@ -362,6 +336,7 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
 
   const handleReset = () => {
     if (undoStack.length === 0) return;
+    cancelSelection();
     const first = undoStack[0];
     setTokens(first.tokens);
     setHistory([]);
@@ -373,10 +348,23 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
 
   const center = CIRCLE_SIZE / 2;
   const radius = tokens.length === 1 ? 0 : CIRCLE_RADIUS;
-  const activeToken = gesture ? tokens.find(t => t.id === gesture.tokenId) : null;
+
+  // Compute fly animation position (source token moves toward target token)
+  let flyPos = null;
+  if (flyAnim) {
+    const fromAngle = renderAngles[flyAnim.fromId] ?? 0;
+    const toAngle = renderAngles[flyAnim.toId] ?? 0;
+    const fromR = tokens.length === 1 ? 0 : radius;
+    flyPos = {
+      fromX: angleToXY(fromAngle, fromR, center).x,
+      fromY: angleToXY(fromAngle, fromR, center).y,
+      toX: angleToXY(toAngle, fromR, center).x,
+      toY: angleToXY(toAngle, fromR, center).y,
+    };
+  }
 
   return (
-    <>
+    <div onClick={handleBackgroundTap}>
       {confetti.length > 0 && (
         <div className="confetti-container">
           {confetti.map(p => (
@@ -423,50 +411,86 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
           const angle = renderAngles[token.id] ?? 0;
           const r = tokens.length === 1 ? 0 : radius;
           const pos = angleToXY(angle, r, center);
-          const isActive = gesture && gesture.tokenId === token.id;
-          const isDragging = isActive && gesture.op;
-          const isDropTarget = gesture && gesture.op && gesture.tokenId !== token.id;
+          const isSelected = selectedTokenId === token.id;
+          const showPetals = isSelected && tapState === 'selectingOp';
+          const isHighlighted = isSelected && tapState === 'selectingTarget';
+          const isDropTarget = tapState === 'selectingTarget' && !isSelected;
           const isNew = newTokenId === token.id;
+          const isFlying = flyAnim && flyAnim.fromId === token.id;
+          const isFlyTarget = flyAnim && flyAnim.toId === token.id;
 
           return (
             <div
               key={token.id}
-              className={`token ${isDragging ? 'token-dragging' : ''} ${isDropTarget ? 'token-drop-target' : ''} ${isNew ? 'token-new' : ''}`}
+              className={[
+                'token',
+                isHighlighted ? 'token-highlighted' : '',
+                isDropTarget ? 'token-drop-target' : '',
+                isNew ? 'token-new' : '',
+                isFlying ? 'token-flying' : '',
+              ].filter(Boolean).join(' ')}
               data-token-id={token.id}
-              style={{ left: pos.x, top: pos.y, opacity: isDragging ? 0.3 : 1 }}
-              onMouseDown={(e) => handlePointerDown(e, token)}
-              onTouchStart={(e) => handlePointerDown(e, token)}
-              onDragStart={(e) => e.preventDefault()}
+              style={{
+                left: pos.x,
+                top: pos.y,
+                opacity: isFlying ? 0 : 1,
+                ...(isHighlighted && selectedOp ? {
+                  borderColor: selectedOp.color,
+                  boxShadow: `0 0 20px ${selectedOp.color}40`,
+                } : {}),
+              }}
+              onClick={(e) => handleTokenTap(e, token)}
             >
               <FractionDisplay value={token.value} />
-              {isActive && !gesture.op && (
+              {isHighlighted && selectedOp && (
+                <span className="token-op-badge" style={{ backgroundColor: selectedOp.color }}>
+                  {selectedOp.op.symbol}
+                </span>
+              )}
+              {showPetals && (
                 <div className="petals">
                   {DIR_OPS.map(d => (
-                    <div key={d.dir} className={`petal petal-${d.dir}`} style={{ backgroundColor: d.color }}>{d.op.symbol}</div>
+                    <div
+                      key={d.dir}
+                      className={`petal petal-${d.dir}`}
+                      style={{ backgroundColor: d.color }}
+                      onClick={(e) => handlePetalTap(e, d)}
+                    >
+                      {d.op.symbol}
+                    </div>
                   ))}
                 </div>
               )}
             </div>
           );
         })}
+
+        {/* Flying token animation */}
+        {flyAnim && flyPos && (() => {
+          const srcToken = tokens.find(t => t.id === flyAnim.fromId);
+          if (!srcToken) return null;
+          return (
+            <div
+              className="token token-fly-anim"
+              style={{
+                '--fly-from-x': `${flyPos.fromX}px`,
+                '--fly-from-y': `${flyPos.fromY}px`,
+                '--fly-to-x': `${flyPos.toX}px`,
+                '--fly-to-y': `${flyPos.toY}px`,
+                animationDuration: `${FLY_ANIM_DURATION}ms`,
+                ...(selectedOp ? { borderColor: selectedOp.color } : {}),
+              }}
+            >
+              <FractionDisplay value={srcToken.value} />
+            </div>
+          );
+        })()}
       </div>
 
-      {gesture && gesture.op && activeToken && (
-        <div className="ghost-token" style={{
-          left: gesture.cursorX,
-          top: gesture.cursorY,
-          borderColor: gesture.op.color,
-          boxShadow: `0 12px 32px ${gesture.op.color}40`,
-        }}>
-          <FractionDisplay value={activeToken.value} />
-          <span className="ghost-op" style={{ color: gesture.op.color }}>{gesture.op.op.symbol}</span>
-        </div>
-      )}
-
       <div className="tokens-hint">
-        {tokens.length > 1 && !solved && !gesture ? 'Press a number, swipe direction, drag to target' : ''}
-        {gesture && !gesture.op ? 'Swipe a direction to pick operation' : ''}
-        {gesture && gesture.op ? 'Drop onto a number' : ''}
+        {tokens.length > 1 && !solved && tapState === 'idle' ? 'Tap a number' : ''}
+        {tapState === 'selectingOp' ? 'Pick an operation' : ''}
+        {tapState === 'selectingTarget' ? 'Tap target number' : ''}
       </div>
 
       <div className="controls">
@@ -477,6 +501,6 @@ export default function GameBoard({ numbers, target, onSolve, extraHeader, round
           <span className="ctrl-icon">↺</span> Reset
         </button>
       </div>
-    </>
+    </div>
   );
 }

@@ -248,6 +248,11 @@
 }
 
 .petal {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.petal {
   position: absolute;
   width: 36px;
   height: 36px;
@@ -311,31 +316,52 @@
   to { transform: translate(50%, -50%) scale(1); }
 }
 
-/* ===== Ghost token (follows cursor) ===== */
-.ghost-token {
-  position: fixed;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 72px;
-  min-height: 72px;
-  padding: 8px 16px;
-  border-radius: 16px;
-  background: #2a2a40;
-  border: 2px solid #6c63ff;
-  color: #e0def4;
-  font-size: 28px;
-  font-weight: 700;
-  pointer-events: none;
-  z-index: 100;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 12px 32px rgba(108, 99, 255, 0.4);
+/* ===== Token states ===== */
+.token-highlighted {
+  z-index: 2;
 }
 
-.ghost-op {
-  color: #6c63ff;
-  font-size: 22px;
-  font-weight: 700;
+.token-op-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #11111b;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Flying token animation */
+.token-fly-anim {
+  animation: flyToTarget var(--fly-duration, 300ms) ease-in forwards;
+  left: var(--fly-from-x);
+  top: var(--fly-from-y);
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes flyToTarget {
+  0% {
+    left: var(--fly-from-x);
+    top: var(--fly-from-y);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  100% {
+    left: var(--fly-to-x);
+    top: var(--fly-to-y);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
 }
 
 /* ===== Hint ===== */
@@ -1138,15 +1164,13 @@
   .petal-right { right: -20px; }
   .petal-left { left: -20px; }
 
-  /* Ghost */
-  .ghost-token {
-    min-width: 56px;
-    min-height: 56px;
-    font-size: 22px;
-    padding: 6px 12px;
-  }
-  .ghost-op {
-    font-size: 18px;
+  /* Op badge */
+  .token-op-badge {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    top: -6px;
+    right: -6px;
   }
 
   /* History */
