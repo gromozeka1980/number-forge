@@ -1,9 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { frac } from './fraction';
+import { findAllReachable } from './solver';
+import { setReachable } from './storage';
 import NumberInput from './NumberInput';
 
-export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCustom, onBack }) {
+export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCustom, onBack, onLevelsChanged }) {
   const [showCreate, setShowCreate] = useState(false);
   const [inputValues, setInputValues] = useState([1, 2, 3, 4]);
+
+  // Compute reachable for any levels that don't have it yet
+  useEffect(() => {
+    let changed = false;
+    for (const level of levels) {
+      if (!level.reachable) {
+        const fracs = level.numbers.map(n => frac(n));
+        const reachable = findAllReachable(fracs);
+        setReachable(level.id, reachable);
+        changed = true;
+      }
+    }
+    if (changed && onLevelsChanged) onLevelsChanged();
+  }, [levels, onLevelsChanged]);
 
   const handleCreate = () => {
     onCreateCustom(inputValues);
