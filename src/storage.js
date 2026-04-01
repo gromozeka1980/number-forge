@@ -6,8 +6,10 @@ const DEFAULT_CAMPAIGN = {
   version: 1,
   levels: {
     'prebuilt_1_2_3': { numbers: [1, 2, 3], solved: [], reachable: null },
+    'prebuilt_2_6_8': { numbers: [2, 6, 8], solved: [], reachable: null },
+    'prebuilt_3_7_9': { numbers: [3, 7, 9], solved: [], reachable: null },
     'prebuilt_1_2_3_4': { numbers: [1, 2, 3, 4], solved: [], reachable: null },
-    'prebuilt_1_2_3_4_5': { numbers: [1, 2, 3, 4, 5], solved: [], reachable: null },
+    'prebuilt_3_5_7_9': { numbers: [3, 5, 7, 9], solved: [], reachable: null },
   },
 };
 
