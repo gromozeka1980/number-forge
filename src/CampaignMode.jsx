@@ -129,7 +129,6 @@ export default function CampaignMode({ onBack }) {
         onCreateCustom={handleCreateCustom}
         onDeleteCustom={handleDeleteCustom}
         onBack={onBack}
-        onLevelsChanged={refreshLevels}
       />
     );
   }

@@ -1,26 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { frac } from './fraction';
 import { findAllReachable } from './solver';
 import { setReachable } from './storage';
 import NumberInput from './NumberInput';
 
-export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCustom, onBack, onLevelsChanged }) {
+export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCustom, onBack }) {
   const [showCreate, setShowCreate] = useState(false);
   const [inputValues, setInputValues] = useState([1, 2, 3, 4]);
 
-  // Compute reachable for any levels that don't have it yet
-  useEffect(() => {
-    let changed = false;
-    for (const level of levels) {
-      if (!level.reachable) {
-        const fracs = level.numbers.map(n => frac(n));
-        const reachable = findAllReachable(fracs);
-        setReachable(level.id, reachable);
-        changed = true;
-      }
-    }
-    if (changed && onLevelsChanged) onLevelsChanged();
-  }, [levels, onLevelsChanged]);
+  // Compute reachable for any levels that don't have it yet, cache in localStorage
+  const enrichedLevels = useMemo(() => {
+    return levels.map(level => {
+      if (level.reachable) return level;
+      const fracs = level.numbers.map(n => frac(n));
+      const reachable = findAllReachable(fracs);
+      setReachable(level.id, reachable);
+      return { ...level, reachable };
+    });
+  }, [levels]);
 
   const handleCreate = () => {
     onCreateCustom(inputValues);
@@ -36,11 +33,11 @@ export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCu
       </div>
 
       <div className="level-list">
-        {levels.map(level => {
-          const total = level.reachable ? level.reachable.length : '?';
+        {enrichedLevels.map(level => {
+          const total = level.reachable.length;
           const solved = level.solved.length;
-          const isComplete = level.reachable && solved >= level.reachable.length;
-          const progress = level.reachable ? (solved / level.reachable.length) : 0;
+          const isComplete = solved >= total;
+          const progress = solved / total;
           const isCustom = level.id.startsWith('custom_');
 
           return (
@@ -73,14 +70,12 @@ export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCu
                 <div className="level-progress-text">
                   {isComplete ? '✓ Complete' : `${solved} / ${total}`}
                 </div>
-                {level.reachable && (
-                  <div className="progress-bar level-progress-bar">
-                    <div
-                      className="progress-fill"
-                      style={{ width: `${progress * 100}%` }}
-                    />
-                  </div>
-                )}
+                <div className="progress-bar level-progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
               </div>
             </div>
           );

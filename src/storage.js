@@ -24,6 +24,12 @@ export function loadCampaign() {
         data.levels[id] = structuredClone(level);
       }
     }
+    // Remove old prebuilt levels that no longer exist in defaults
+    for (const id of Object.keys(data.levels)) {
+      if (id.startsWith('prebuilt_') && !DEFAULT_CAMPAIGN.levels[id]) {
+        delete data.levels[id];
+      }
+    }
     return data;
   } catch {
     return structuredClone(DEFAULT_CAMPAIGN);
