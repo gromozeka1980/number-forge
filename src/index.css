@@ -1,0 +1,16 @@
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #11111b;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
