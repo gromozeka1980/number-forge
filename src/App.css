@@ -254,12 +254,12 @@
 
 .petal {
   position: absolute;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   /* background set via inline style per operation color */
-  color: white;
-  font-size: 18px;
+  color: #11111b;
+  font-size: 22px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -275,26 +275,26 @@
 
 .petal-top {
   left: 50%;
-  top: -24px;
+  top: -30px;
   transform: translate(-50%, -50%);
 }
 
 .petal-bottom {
   left: 50%;
-  bottom: -24px;
+  bottom: -30px;
   top: auto;
   transform: translate(-50%, 50%);
 }
 
 .petal-right {
-  right: -24px;
+  right: -30px;
   left: auto;
   top: 50%;
   transform: translate(50%, -50%);
 }
 
 .petal-left {
-  left: -24px;
+  left: -30px;
   top: 50%;
   transform: translate(-50%, -50%);
 }
@@ -1155,14 +1155,14 @@
 
   /* Petals */
   .petal {
-    width: 30px;
-    height: 30px;
-    font-size: 15px;
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
   }
-  .petal-top { top: -20px; }
-  .petal-bottom { bottom: -20px; }
-  .petal-right { right: -20px; }
-  .petal-left { left: -20px; }
+  .petal-top { top: -22px; }
+  .petal-bottom { bottom: -22px; }
+  .petal-right { right: -22px; }
+  .petal-left { left: -22px; }
 
   /* Op badge */
   .token-op-badge {
