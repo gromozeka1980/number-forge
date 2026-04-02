@@ -98,7 +98,6 @@ export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCu
           <h3 className="create-level-title">Custom Level</h3>
           <input
             type="text"
-            inputMode="numeric"
             className="custom-level-input"
             placeholder="e.g. 3 7 12"
             value={inputText}
