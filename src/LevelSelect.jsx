@@ -98,8 +98,9 @@ export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCu
           <h3 className="create-level-title">Custom Level</h3>
           <input
             type="text"
+            inputMode="numeric"
             className="custom-level-input"
-            placeholder="e.g. 3, 7, 12"
+            placeholder="e.g. 3 7 12"
             value={inputText}
             onChange={e => { setInputText(e.target.value); setInputError(''); }}
             onKeyDown={e => e.key === 'Enter' && handleCreate()}
