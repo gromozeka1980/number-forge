@@ -1,9 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { frac } from './fraction';
-import { generateTimeAttackRound } from './timeAttackGenerator';
+import { createTimeAttackSession } from './timeAttackGenerator';
 import GameBoard from './GameBoard';
 
-const DURATION = 5 * 60; // 5 minutes in seconds
+const DURATION = 5 * 60;
 
 const COUNT_OPTIONS = [
   { count: 3, label: '3 numbers' },
@@ -18,39 +17,40 @@ function formatTime(seconds) {
 }
 
 export default function TimeAttackMode({ onBack }) {
-  const [phase, setPhase] = useState('setup'); // setup | playing | results
+  const [phase, setPhase] = useState('setup');
   const [numberCount, setNumberCount] = useState(4);
+  const [seed, setSeed] = useState('');
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(DURATION);
   const [currentRound, setCurrentRound] = useState(null);
   const [roundKey, setRoundKey] = useState(0);
   const [confetti, setConfetti] = useState([]);
+  const [usedSeed, setUsedSeed] = useState('');
 
-  const usedCombosRef = useRef(new Set());
+  const sessionRef = useRef(null);
   const timerRef = useRef(null);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
   const startGame = () => {
-    usedCombosRef.current = new Set();
-    const round = generateTimeAttackRound(numberCount, usedCombosRef.current);
+    const s = seed.trim() || null;
+    sessionRef.current = createTimeAttackSession(numberCount, s);
+    const round = sessionRef.current.next();
     if (!round) return;
-    usedCombosRef.current.add(round.comboKey);
     setCurrentRound(round);
+    setUsedSeed(s || '');
     setScore(0);
     setTimeLeft(DURATION);
     setRoundKey(k => k + 1);
     setPhase('playing');
   };
 
-  // Timer
   useEffect(() => {
     if (phase !== 'playing') return;
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current);
-          // Use timeout to avoid setState during render
           setTimeout(() => {
             if (phaseRef.current === 'playing') {
               setPhase('results');
@@ -78,23 +78,17 @@ export default function TimeAttackMode({ onBack }) {
 
   const handleSolve = useCallback(() => {
     setScore(s => s + 1);
-
-    // Generate next round
-    const round = generateTimeAttackRound(numberCount, usedCombosRef.current);
+    const round = sessionRef.current?.next();
     if (!round) {
-      // Exhausted all combos (very unlikely)
       setPhase('results');
       spawnConfetti();
       return;
     }
-    usedCombosRef.current.add(round.comboKey);
-
-    // Brief delay so user sees the solved state
     setTimeout(() => {
       setCurrentRound(round);
       setRoundKey(k => k + 1);
     }, 400);
-  }, [numberCount]);
+  }, []);
 
   // --- Setup ---
   if (phase === 'setup') {
@@ -113,6 +107,18 @@ export default function TimeAttackMode({ onBack }) {
               {opt.label}
             </button>
           ))}
+        </div>
+        <div className="ta-seed-section">
+          <input
+            type="text"
+            className="ta-seed-input"
+            placeholder="Seed (optional)"
+            value={seed}
+            onChange={e => setSeed(e.target.value)}
+          />
+          <p className="ta-seed-hint">
+            Same seed = same puzzles. Share with friends to compete!
+          </p>
         </div>
         <button className="start-btn" onClick={startGame}>Start</button>
       </div>
@@ -141,7 +147,10 @@ export default function TimeAttackMode({ onBack }) {
             <span className="ta-score-number">{score}</span>
             <span className="ta-score-label">puzzles solved</span>
           </div>
-          <p className="ta-score-detail">{numberCount} numbers · 5 minutes</p>
+          <p className="ta-score-detail">
+            {numberCount} numbers · 5 minutes
+            {usedSeed && <> · seed: <strong>{usedSeed}</strong></>}
+          </p>
           <div className="victory-buttons">
             <button className="ctrl-btn ctrl-new" onClick={() => {
               setConfetti([]);

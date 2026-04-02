@@ -2,11 +2,11 @@ import { useState, useMemo } from 'react';
 import { frac } from './fraction';
 import { findAllReachable } from './solver';
 import { setReachable } from './storage';
-import NumberInput from './NumberInput';
 
 export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCustom, onBack }) {
   const [showCreate, setShowCreate] = useState(false);
-  const [inputValues, setInputValues] = useState([1, 2, 3, 4]);
+  const [inputText, setInputText] = useState('');
+  const [inputError, setInputError] = useState('');
 
   // Compute reachable for any levels that don't have it yet, cache in localStorage
   const enrichedLevels = useMemo(() => {
@@ -20,9 +20,20 @@ export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCu
   }, [levels]);
 
   const handleCreate = () => {
-    onCreateCustom(inputValues);
+    const parts = inputText.split(/[,\s]+/).filter(Boolean);
+    const nums = parts.map(s => parseInt(s)).filter(n => !isNaN(n) && n >= 1);
+    if (nums.length < 3) {
+      setInputError('Enter at least 3 numbers');
+      return;
+    }
+    if (nums.length > 6) {
+      setInputError('Maximum 6 numbers');
+      return;
+    }
+    setInputError('');
+    onCreateCustom(nums);
     setShowCreate(false);
-    setInputValues([1, 2, 3, 4]);
+    setInputText('');
   };
 
   return (
@@ -82,17 +93,23 @@ export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCu
         })}
       </div>
 
-      {/* Create custom level */}
       {showCreate ? (
         <div className="create-level-form">
           <h3 className="create-level-title">Custom Level</h3>
-          <NumberInput
-            values={inputValues}
-            onChange={setInputValues}
-            onSubmit={handleCreate}
-            onCancel={() => setShowCreate(false)}
-            submitLabel="Create"
+          <input
+            type="text"
+            className="custom-level-input"
+            placeholder="e.g. 3, 7, 12"
+            value={inputText}
+            onChange={e => { setInputText(e.target.value); setInputError(''); }}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            autoFocus
           />
+          {inputError && <div className="custom-level-error">{inputError}</div>}
+          <div className="input-actions">
+            <button className="start-btn" onClick={handleCreate}>Create</button>
+            <button className="ctrl-btn" onClick={() => { setShowCreate(false); setInputError(''); }}>Cancel</button>
+          </div>
         </div>
       ) : (
         <button className="create-level-btn" onClick={() => setShowCreate(true)}>
