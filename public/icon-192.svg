@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#1e1e2e"/>
+  <text x="96" y="80" font-family="system-ui,sans-serif" font-size="48" font-weight="800" fill="#e0def4" text-anchor="middle">NF</text>
+  <circle cx="56" cy="130" r="16" fill="#a6e3a1"/>
+  <text x="56" y="136" font-family="system-ui,sans-serif" font-size="20" font-weight="800" fill="#11111b" text-anchor="middle">+</text>
+  <circle cx="96" cy="130" r="16" fill="#f38ba8"/>
+  <text x="96" y="136" font-family="system-ui,sans-serif" font-size="20" font-weight="800" fill="#11111b" text-anchor="middle">-</text>
+  <circle cx="136" cy="130" r="16" fill="#89b4fa"/>
+  <text x="136" y="136" font-family="system-ui,sans-serif" font-size="20" font-weight="800" fill="#11111b" text-anchor="middle">x</text>
+</svg>
