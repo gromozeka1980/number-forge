@@ -22,7 +22,7 @@ function Menu({ onSelect }) {
       <div className="menu-cards">
         <button className="menu-card" onClick={() => onSelect('campaign')}>
           <span className="menu-card-icon">&#9733;</span>
-          <span className="menu-card-title">Campaign</span>
+          <span className="menu-card-title">Normal Game</span>
           <span className="menu-card-desc">Solve levels, track your progress</span>
         </button>
         <button className="menu-card" onClick={() => onSelect('timeattack')}>

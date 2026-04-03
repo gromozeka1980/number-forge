@@ -40,7 +40,7 @@ export default function LevelSelect({ levels, onPlay, onCreateCustom, onDeleteCu
     <div className="level-select">
       <div className="level-select-header">
         <button className="back-btn" onClick={onBack}>Back</button>
-        <h2 className="level-select-title">Campaign</h2>
+        <h2 className="level-select-title">Levels</h2>
       </div>
 
       <div className="level-list">
