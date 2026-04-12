@@ -1407,3 +1407,13 @@
     justify-content: center;
   }
 }
+
+.more-games-link {
+  margin-top: 16px;
+  font-size: 0.78rem;
+  color: #6c7086;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.more-games-link:hover { opacity: 1; }

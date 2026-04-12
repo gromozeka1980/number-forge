@@ -31,6 +31,10 @@ function Menu({ onSelect }) {
           <span className="menu-card-desc">5 minutes, solve as many as you can</span>
         </button>
       </div>
+
+      <a className="more-games-link" href="https://caterpillars.games" target="_top">
+        More games at caterpillars.games
+      </a>
     </div>
   );
 }
